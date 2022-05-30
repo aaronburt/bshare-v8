@@ -42,4 +42,4 @@ app.get('/deletion/:id', async(req, res) => {
     }
 });
 
-const listener = app.listen(80, () => { console.log(`[Express][v1.0] started on port ${listener.address().port}`) })
+const listener = app.listen(80, () => { console.log(`[Express][v1.1] started on port ${listener.address().port}`) })
