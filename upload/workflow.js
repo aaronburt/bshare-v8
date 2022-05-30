@@ -115,7 +115,7 @@ class Process {
             await s3.upload(`${uploadTimeStamp}/manifest.json`, JSON.stringify(manifest), bucket, { "ContentType": 'application/json' });
             return { 
                 "Deletion": `${this.config.processDomain}/deletion/${deletionUrl}`, 
-                "Manifest": `${this.config.cdnDomain}/${uploadTimeStamp}/manifest.json`,
+                "Manifest": `${this.config.cdnDomain}/${uploadTimeStamp}/${parsedFile}.json`,
                 ...manifest 
             };
 
