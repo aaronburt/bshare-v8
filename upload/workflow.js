@@ -112,7 +112,7 @@ class Process {
 
             const deletionUrl = await this.generateDeletionUrl(`${uploadTimeStamp}/${parsedFile}.${convertedWebp.info.format}`);
             const manifest = { "Location": `${this.config.cdnDomain}/${imageUpload.Key}`, "Thumbnail": `${this.config.cdnDomain}/${thumbnailUpload.Key}` };
-            await s3.upload(`${uploadTimeStamp}/manifest.json`, JSON.stringify(manifest), bucket, { "ContentType": 'application/json' });
+            await s3.upload(`${uploadTimeStamp}/${parsedFile}.json`, JSON.stringify(manifest), bucket, { "ContentType": 'application/json' });
             return { 
                 "Deletion": `${this.config.processDomain}/deletion/${deletionUrl}`, 
                 "Manifest": `${this.config.cdnDomain}/${uploadTimeStamp}/${parsedFile}.json`,
