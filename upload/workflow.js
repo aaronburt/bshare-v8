@@ -1,12 +1,14 @@
 require('dotenv').config();
 const { access_key, secret_key, region, bucket, bucket_endpoint } = process.env;
+const { encrypt, decrypt } = require('../cryptor/crypt');
 const s3api = require('../s3/s3Api');
 const sharp = require('sharp');
 const path = require('path');
+const res = require('express/lib/response');
 
 class Process {
 
-    constructor(file, config = { "thumbnailResize": 200, "cdnDomain": "http://localhost" }){        
+    constructor(file, config = { "thumbnailResize": 200, "cdnDomain": "http://localhost", "processDomain": "http://localhost" }){        
         this.file = file;
         this.config = config;
     }
@@ -30,7 +32,12 @@ class Process {
             `${uploadTimeStamp}/${this.file.originalname}`, this.file.buffer, bucket, { "ContentType": this.file.mimetype }
         );
 
-        return { "Location": `${this.config.cdnDomain}/${upload.Key}` };
+        const deletionUrl = await this.generateDeletionUrl(upload.Key);
+
+        return { 
+            "Location": `${this.config.cdnDomain}/${upload.Key}`,
+            "Deletion": `${this.config.processDomain}/deletion/${deletionUrl}`
+        };
     }
 
     async generateImageThumbnail(buffer, resize, quality = 95){
@@ -58,8 +65,30 @@ class Process {
         }
     }
 
+    async delete(key){
+        try {
+            const s3 = new s3api(access_key, secret_key, region, bucket_endpoint, bucket);
+            const deletion = await s3.delete(key, bucket);
+            return res.send(deletion);
+        } catch(err){
+            console.log(err);
+            return false;
+        }
+    }
+
     async generateUnixTimeStamp(){
         return Math.round(Date.now() / 1000);
+    }
+
+    async generateDeletionUrl(url){
+        return new Promise((resolve, reject) => {
+            try {
+                const encrypted = encrypt(url);
+                resolve(Buffer.from(JSON.stringify(encrypted)).toString('base64'));
+            } catch(err){
+                reject();
+            }
+        });
     }
 
     async uploadImage(){
@@ -86,9 +115,12 @@ class Process {
                 { "ContentType": 'image/webp' }
             );
 
+            const deletionUrl = await this.generateDeletionUrl(`${uploadTimeStamp}/${path.parse(this.file.originalname).name}.${convertedWebp.info.format}`);
+            
             return { 
                 "Location": `${this.config.cdnDomain}/${imageUpload.Key}`, 
-                "Thumbnail": `${this.config.cdnDomain}/${thumbnailUpload.Key}` 
+                "Thumbnail": `${this.config.cdnDomain}/${thumbnailUpload.Key}`,
+                "Deletion": `${this.config.processDomain}/deletion/${deletionUrl}`
             };
 
         } catch(err){
