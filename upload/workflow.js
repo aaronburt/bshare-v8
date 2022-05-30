@@ -96,31 +96,27 @@ class Process {
 
             const uploadTimeStamp = (await this.generateUnixTimeStamp()).toString();
             const s3 = new s3api(access_key, secret_key, region, bucket_endpoint, bucket);
-
             const convertedWebp = await this.convertToWebp(this.file.buffer, 95);
+            const parsedFile = path.parse(this.file.originalname).name;
 
             const imageUpload = await s3.upload(
-                `${uploadTimeStamp}/${path.parse(this.file.originalname).name}.${convertedWebp.info.format}`, 
-                convertedWebp.data, 
-                bucket, 
-                { "ContentType": this.file.mimetype }
+                `${uploadTimeStamp}/${parsedFile}.${convertedWebp.info.format}`, 
+                convertedWebp.data, bucket, { "ContentType": this.file.mimetype }
             );
 
             const generatedThumbnail = await this.generateImageThumbnail(this.file.buffer, this.config.thumbnailResize, 70);
 
             const thumbnailUpload = await s3.upload(
-                `${uploadTimeStamp}/${path.parse(this.file.originalname).name}_thumbnail.${generatedThumbnail.info.format}`, 
-                generatedThumbnail.data, 
-                bucket, 
-                { "ContentType": 'image/webp' }
+                `${uploadTimeStamp}/${parsedFile}_thumbnail.${generatedThumbnail.info.format}`, generatedThumbnail.data, bucket, { "ContentType": 'image/webp' }
             );
 
-            const deletionUrl = await this.generateDeletionUrl(`${uploadTimeStamp}/${path.parse(this.file.originalname).name}.${convertedWebp.info.format}`);
-            
+            const deletionUrl = await this.generateDeletionUrl(`${uploadTimeStamp}/${parsedFile}.${convertedWebp.info.format}`);
+            const manifest = { "Location": `${this.config.cdnDomain}/${imageUpload.Key}`, "Thumbnail": `${this.config.cdnDomain}/${thumbnailUpload.Key}` };
+            await s3.upload(`${uploadTimeStamp}/manifest.json`, JSON.stringify(manifest), bucket, { "ContentType": 'application/json' });
             return { 
-                "Location": `${this.config.cdnDomain}/${imageUpload.Key}`, 
-                "Thumbnail": `${this.config.cdnDomain}/${thumbnailUpload.Key}`,
-                "Deletion": `${this.config.processDomain}/deletion/${deletionUrl}`
+                "Deletion": `${this.config.processDomain}/deletion/${deletionUrl}`, 
+                "Manifest": `${this.config.cdnDomain}/${uploadTimeStamp}/manifest.json`,
+                ...manifest 
             };
 
         } catch(err){

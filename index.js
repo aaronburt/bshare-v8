@@ -34,8 +34,7 @@ app.get('/deletion/:id', async(req, res) => {
         }
 
         const s3 = new s3api(access_key, secret_key, region, bucket_endpoint, bucket);
-        const deletion = await s3.delete(decryptedId, bucket);
-        res.send(deletion)
+        res.send(await s3.delete(decryptedId, bucket))
 
     } catch(err){
         console.log(err)
